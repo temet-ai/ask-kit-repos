@@ -5,6 +5,7 @@ min_ask_kit = "0.3.0"
 requires = ["git"]
 says = "all the git repositories and worktrees on this machine at once: which have uncommitted, unpushed or stashed work, which branch each is on and how far ahead or behind, where a branch, a commit or a file lives, what was committed today or this week across projects, which worktrees exist and which are stale, which branches are merged and can go; and acting on them (fetch, pull, push, switch, stash, prune, delete merged branches)"
 keywords = ["repos", "repositor(y|ies)", "worktrees?", "uncommitted", "unpushed", "stash(es|ed)?", "which branch", "branch \\S+ (is )?checked out", "checked out", "ahead", "behind", "merged branches", "across (all )?(my )?(repos|projects)", "git status", "all (my )?(repos|projects)"]
+patterns = ['\b(which|what|any|all)( of)?( my| the| our)?( git)? (repos|repositories)\b.*\b(uncommitted|unpushed|dirty|behind|ahead|stash\w*|remote|unfinished|pushed|committed)\b', '\bacross (all )?(my |the |our )?(repos|repositories)\b']
 route_hint = "The state of many repositories and worktrees on this machine (what is uncommitted, unpushed, on which branch, done today across projects) is repos; one repository's code and its history is code; pull requests and CI are github; what a past session did is sessions"
 cite = "the repository's label, the branch, a short sha, and the git command"
 instructions = "instructions.md"
