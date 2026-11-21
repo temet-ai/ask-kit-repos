@@ -1,0 +1,69 @@
+id = "temet.repos"
+name = "repos"
+version = "0.1.0"
+min_ask_kit = "0.3.0"
+requires = ["git"]
+says = "all the git repositories and worktrees on this machine at once: which have uncommitted, unpushed or stashed work, which branch each is on and how far ahead or behind, where a branch, a commit or a file lives, what was committed today or this week across projects, which worktrees exist and which are stale, which branches are merged and can go; and acting on them (fetch, pull, push, switch, stash, prune, delete merged branches)"
+keywords = ["repos", "repositor(y|ies)", "worktrees?", "uncommitted", "unpushed", "stash(es|ed)?", "which branch", "branch \\S+ (is )?checked out", "checked out", "ahead", "behind", "merged branches", "across (all )?(my )?(repos|projects)", "git status", "all (my )?(repos|projects)"]
+route_hint = "The state of many repositories and worktrees on this machine (what is uncommitted, unpushed, on which branch, done today across projects) is repos; one repository's code and its history is code; pull requests and CI are github; what a past session did is sessions"
+cite = "the repository's label, the branch, a short sha, and the git command"
+instructions = "instructions.md"
+# The host refuses these when the git command follows the function's name, repos.git("push"). A call
+# that names the repository first, repos.git("watch", "push"), is held back by repos.mjs, which lets
+# only reading commands through without act.
+acts = [
+  "git fetch", "git pull", "git push", "git switch", "git checkout", "git commit", "git add", "git restore", "git reset",
+  "git stash push", "git stash pop", "git stash apply", "git stash drop", "git stash clear",
+  "git merge", "git rebase", "git cherry-pick", "git revert",
+  "git branch -d", "git branch -D", "git branch -m", "git tag <name>",
+  "git worktree add", "git worktree remove", "git worktree prune",
+  "git remote add", "git remote remove", "git remote set-url",
+  "git clean", "git gc", "git config <key> <value>", "git apply", "git am",
+  "any other git command that is not on the reading list in repos.mjs",
+]
+
+[[settings]]
+key = "WORKDIR"
+about = "the folder questions are about; by default the folder the agent runs in"
+detect = ["node", "-e", "process.stdout.write(process.cwd())"]
+
+[[settings]]
+key = "REPOS_ROOTS"
+about = "the folders to look for repositories in, comma-separated; by default the parent of the repository the agent is in, and those of ~/projects, ~/code, ~/src, ~/dev, ~/work, ~/repos and ~/git that exist"
+
+[[settings]]
+key = "REPOS_DEPTH"
+about = "how many folder levels below each root to look for repositories"
+default = "4"
+
+[[settings]]
+key = "REPOS_MAX"
+about = "the most repositories and worktrees to list; the result says when it stopped there"
+default = "300"
+
+[[sources]]
+kind = "module"
+name = "repos"
+module = "repos.mjs"
+api = "api.d.ts"
+
+[[actions]]
+name = "status"
+title = "The state of every repository"
+script = "status"
+match = ['(?:what is |what\x27s |show (?:me )?|give me )?(?:the )?(?:git )?(?:status|state) of (?:all )?(?:my |the )?(?:git )?(?:repos|repositories|projects)(?: on this machine)?']
+expect = 'need attention'
+
+[[actions]]
+name = "unfinished"
+title = "Repositories with uncommitted, unpushed or stashed work"
+script = "unfinished"
+match = ['(?:which|what) (?:of my |of the )?(?:git )?(?:repos|repositories|projects|worktrees) (?:have|has|hold|holds) (?:any )?(?:uncommitted|unpushed|unfinished|uncommitted or unpushed|unpushed or uncommitted|stashed) (?:work|changes|commits)(?: on this machine)?']
+expect = 'verdict'
+
+[[actions]]
+name = "activity"
+title = "Commits across all repositories since a time"
+script = "activity"
+match = ['what (?:did|have) i (?:commit|committed) (?<since>today|yesterday|this week|this month)(?: across (?:all )?(?:my )?(?:repos|repositories|projects))?']
+expect = 'verdict'

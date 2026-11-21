@@ -1,0 +1,65 @@
+{
+  "_about": "Shots only: each runs a script with no model against the fixture that `node bench/fixture/build.mjs` builds under bench/fixture/roots. Run from the kit's folder, so the relative roots resolve. Times are given with a zone, so the counts do not depend on the machine's time zone. Expectations were checked against the built fixture on 2026-11-20. Model questions (`q`) are still to be added, from real sessions only.",
+  "questions": [
+    {
+      "id": "status-table",
+      "do": "status",
+      "params": { "roots": "bench/fixture/roots" },
+      "expect": ["2 of 6 need attention", "1 staged, 1 unstaged, 1 untracked", "\"ahead\": 2", "\"stashes\": 1", "WATCH-12 Record the night patrol route", "\"worktreeOf\": \"unseen-university\""]
+    },
+    {
+      "id": "unfinished-what",
+      "do": "unfinished",
+      "params": { "roots": "bench/fixture/roots" },
+      "expect": ["notes-smoking-gnu\\.txt", "semaphore\\.md", "towers\\.txt", "Print the fivepenny stamp", "Print the penny stamp", "cabbage stamp, not ready", "the repository has no remote", "\"clean\": \\[\\s*\"watch\"\\s*\\]"]
+    },
+    {
+      "id": "activity-one-day",
+      "do": "activity",
+      "params": { "roots": "bench/fixture/roots", "since": "2026-11-03T00:00:00Z", "until": "2026-11-03T23:59:59Z" },
+      "expect": ["2 commits in 1 of 4 repositories", "\"day\": \"2026-11-0[234]\"", "post-office \\[main\\] [0-9a-f]{7} Print the penny stamp \\(1 file\\)", "moist@post-office\\.example\\.com"]
+    },
+    {
+      "id": "activity-by-author",
+      "do": "activity",
+      "params": { "roots": "bench/fixture/roots", "since": "2026-11-01T00:00:00Z", "until": "2026-11-06T00:00:00Z", "author": "Vimes" },
+      "expect": ["5 commits in 2 of 4 repositories", "watch \\[main\\] [0-9a-f]{7} WATCH-7 Add Cable Street to the roster", "clacks \\[main\\] [0-9a-f]{7} Add the tower list", "Sam Vimes"]
+    },
+    {
+      "id": "where-branch",
+      "do": "where",
+      "params": { "roots": "bench/fixture/roots", "q": "hex-upgrade" },
+      "expect": ["found as branch hex-upgrade in unseen-university", "\"match\": \"exact\"", "\"checkedOutAt\": \"[^\"]*unseen-university-hex\""]
+    },
+    {
+      "id": "where-subject-and-file",
+      "do": "where",
+      "params": { "roots": "bench/fixture/roots", "q": "roster" },
+      "expect": ["commit subjects in watch; files in watch", "WATCH-1 Add the duty roster", "roster\\.md"]
+    },
+    {
+      "id": "where-nothing",
+      "do": "where",
+      "params": { "roots": "bench/fixture/roots", "q": "octarine" },
+      "expect": ["\"octarine\\\\\" was not found", "\"searched\": 6"]
+    },
+    {
+      "id": "worktrees-stale",
+      "do": "worktrees",
+      "params": { "roots": "bench/fixture/roots" },
+      "expect": ["2 linked worktrees in 1 repositories: 1 can go", "\"removable\": \\[\\s*\"[^\"]*unseen-university-library\"", "branch merged into main", "\"branch\": \"hex-upgrade\""]
+    },
+    {
+      "id": "branches-merged",
+      "do": "branches",
+      "params": { "roots": "bench/fixture/roots", "repo": "unseen-university" },
+      "expect": ["\"defaultBranch\": \"main\"", "origin/HEAD is not set", "\"merged\": \\[\\s*\\{\\s*\"branch\": \"library-hours\"", "\"branch\": \"hex-upgrade\",\\s*\"age\": \"[^\"]+\",\\s*\"commits\": 4"]
+    },
+    {
+      "id": "branches-all",
+      "do": "branches",
+      "params": { "roots": "bench/fixture/roots" },
+      "expect": ["4 repositories: 1 branches merged into the default branch, 0 with a gone upstream, 1 ahead of their upstream, 2 never pushed", "\"defaultFrom\": \"origin/HEAD\"", "\"ahead\": 2", "\"nothing\": \\[\\s*\"clacks\",\\s*\"watch\"\\s*\\]"]
+    }
+  ]
+}
