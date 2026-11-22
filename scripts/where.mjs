@@ -45,8 +45,12 @@ export default async function ({ repos }, { q, kind, only, roots } = {}) {
     if (want("commit") && isSha) {
       const v = await git("rev-parse", "--verify", "--quiet", `${q}^{commit}`);
       if (v.code === 0) {
-        const [sha, time, author, ...subject] = (await git("log", "-1", "--date=format-local:%Y-%m-%d %H:%M", "--format=%h%x09%cd%x09%an%x09%s", v.out.trim())).out.trim().split("\t");
-        const on = lines((await git("branch", "-a", "--contains", v.out.trim(), "--format=%(refname)")).out).filter((x) => !x.endsWith("/HEAD") && x.startsWith("refs/")).map((x) => x.replace(/^refs\/(heads|remotes)\//, ""));
+        const [logRes, containing] = await Promise.all([
+          git("log", "-1", "--date=format-local:%Y-%m-%d %H:%M", "--format=%h%x09%cd%x09%an%x09%s", v.out.trim()),
+          git("branch", "-a", "--contains", v.out.trim(), "--format=%(refname)"),
+        ]);
+        const [sha, time, author, ...subject] = logRes.out.trim().split("\t");
+        const on = lines(containing.out).filter((x) => !x.endsWith("/HEAD") && x.startsWith("refs/")).map((x) => x.replace(/^refs\/(heads|remotes)\//, ""));
         o.commits.push({ repo: repo.label, sha, subject: subject.join(" ").slice(0, 110), time, author, on: on.slice(0, 8), ...(on.length > 8 ? { onMore: on.length - 8 } : {}) });
       }
     }

@@ -24,15 +24,24 @@ export default async function ({ repos }, { repo, roots } = {}) {
     only = [hit?.worktree ? hit.of : one.repo];
     matched = one.matched;
   }
+  const statusesP = r.statuses({ only });
   const rows = await r.each(async (entry, git) => {
-    const def = await r.defaultBranch(entry.label);
-    const refs = lines((await git("for-each-ref", "--sort=-committerdate", "--format=%(refname:short)%09%(committerdate:unix)%09%(upstream:short)%09%(upstream:track)%09%(worktreepath)%09%(HEAD)", "refs/heads")).out).map((l) => {
+    const [def, refsRes] = await Promise.all([
+      r.defaultBranch(entry.label),
+      git("for-each-ref", "--sort=-committerdate", "--format=%(refname:short)%09%(committerdate:unix)%09%(upstream:short)%09%(upstream:track)%09%(worktreepath)%09%(HEAD)", "refs/heads"),
+    ]);
+    const refs = lines(refsRes.out).map((l) => {
       const [branch, ct, upstream, track, wt, head] = l.split("\t");
       return { branch, age: repos.age(Number(ct)), upstream: upstream || null, track: track ?? "", wt: wt || null, current: head === "*" };
     });
     const mergedSet = def.ref ? new Set(lines((await git("branch", "--merged", def.ref, "--format=%(refname:short)")).out)) : new Set();
     const o = { repo: entry.label, defaultBranch: def.branch, defaultFrom: def.from, current: refs.find((x) => x.current)?.branch ?? "(detached)", branches: refs.length, merged: [], gone: [], unpushed: [], noUpstream: [] };
+    // Branches with no upstream need a commit count each: ask for them all at once.
     let checks = 0;
+    const counts = new Map();
+    await Promise.all(refs.filter((b) => b.branch !== def.branch && !mergedSet.has(b.branch) && !b.upstream && !/gone/.test(b.track) && checks++ < 25).map(async (b) => {
+      counts.set(b.branch, Number((await git("rev-list", "--count", b.branch, "--not", "--remotes")).out.trim()) || 0);
+    }));
     for (const b of refs) {
       const isMerged = b.branch !== def.branch && mergedSet.has(b.branch);
       const where = b.wt && !b.current ? { checkedOutAt: b.wt } : b.current ? { current: true } : {};
@@ -41,8 +50,8 @@ export default async function ({ repos }, { repo, roots } = {}) {
       const behind = Number(/behind (\d+)/.exec(b.track)?.[1] ?? 0);
       if (/gone/.test(b.track)) o.gone.push({ branch: b.branch, upstream: b.upstream, age: b.age, unmerged: !isMerged && b.branch !== def.branch, ...where });
       else if (ahead) o.unpushed.push({ branch: b.branch, upstream: b.upstream, ahead, behind, age: b.age, ...where });
-      else if (!b.upstream && !isMerged && checks++ < 25) {
-        const n = Number((await git("rev-list", "--count", b.branch, "--not", "--remotes")).out.trim()) || 0;
+      else if (counts.has(b.branch)) {
+        const n = counts.get(b.branch);
         if (n) o.noUpstream.push({ branch: b.branch, age: b.age, commits: n, ...where });
       }
     }
@@ -56,7 +65,7 @@ export default async function ({ repos }, { repo, roots } = {}) {
   const interesting = (o) => o.error || o.merged || o.gone || o.unpushed || o.noUpstream;
   const kept = repo ? vals : vals.filter(interesting);
   const total = (k) => vals.reduce((n, o) => n + (o[k]?.length ?? 0) + (o[`${k}LeftOut`] ?? 0), 0);
-  const sts = await r.statuses({ only });
+  const sts = await statusesP;
   const tracked = sts.filter((s) => s.upstream && !s.error);
   const oldest = tracked.filter((s) => s.lastFetch).sort((a, b) => (a.lastFetch < b.lastFetch ? -1 : 1))[0];
   return {

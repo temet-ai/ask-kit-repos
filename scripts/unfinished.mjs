@@ -26,15 +26,17 @@ export default async function ({ repos }, { only, roots, branches = true } = {})
     if (s.dirty) o.uncommitted = Object.fromEntries(["staged", "unstaged", "untracked", "conflicted"].filter((k) => s[k].count).map((k) => [k, s[k]]));
     const subjects = async (...range) => lines((await git("log", "--format=%h %s", "-n", "10", ...range)).out).map((l) => l.slice(0, 100));
     const count = async (...range) => Number((await git("rev-list", "--count", ...range)).out.trim()) || 0;
-    const hasRemote = lines((await git("remote")).out).length > 0;
+    const remoteP = git("remote");
     if (s.ahead) o.unpushed = { upstream: s.upstream, count: s.ahead, commits: await subjects(`${s.upstream}..HEAD`) };
     else if (s.detached) {
-      const n = await count("HEAD", "--not", "--branches", "--remotes", "--tags");
-      if (n) o.detached = { head: s.head, count: n, commits: await subjects("HEAD", "--not", "--branches", "--remotes", "--tags"), why: "no branch or tag holds these commits" };
+      const range = ["HEAD", "--not", "--branches", "--remotes", "--tags"];
+      const [n, commits] = await Promise.all([count(...range), subjects(...range)]);
+      if (n) o.detached = { head: s.head, count: n, commits, why: "no branch or tag holds these commits" };
     } else if (s.head && (!s.upstream || s.upstreamGone)) {
-      const n = await count("HEAD", "--not", "--remotes");
+      const [n, commits, remotes] = await Promise.all([count("HEAD", "--not", "--remotes"), subjects("HEAD", "--not", "--remotes"), remoteP]);
+      const hasRemote = lines(remotes.out).length > 0;
       const why = s.upstreamGone ? `the upstream ${s.upstream} is gone` : hasRemote ? "the branch has no upstream" : "the repository has no remote";
-      if (n) o.noUpstream = { count: n, commits: await subjects("HEAD", "--not", "--remotes"), why: `${why}; no remote has these commits` };
+      if (n) o.noUpstream = { count: n, commits, why: `${why}; no remote has these commits` };
     }
     if (s.stashes) {
       o.stashes = lines((await git("stash", "list", "--format=%gd%x09%ct%x09%gs", "-n", "10")).out).map((l) => {
@@ -46,16 +48,17 @@ export default async function ({ repos }, { only, roots, branches = true } = {})
     // Other local branches are shared by a repository's worktrees: look once, from the main one.
     if (branches && !repo.worktree) {
       const refs = lines((await git("for-each-ref", "--format=%(refname:short)%09%(upstream:short)%09%(upstream:track)%09%(worktreepath)", "refs/heads")).out).map((l) => l.split("\t"));
-      const other = [];
-      for (const [name, up, track, wt] of refs.slice(0, 40)) {
-        if (wt) continue; // checked out somewhere: that worktree's own row says it
+      const found = await Promise.all(refs.slice(0, 40).map(async ([name, up, track, wt]) => {
+        if (wt) return null; // checked out somewhere: that worktree's own row says it
         const ahead = /ahead (\d+)/.exec(track ?? "")?.[1];
-        if (ahead) other.push({ branch: name, why: `ahead of ${up}`, count: Number(ahead) });
-        else if (!up || /gone/.test(track ?? "")) {
+        if (ahead) return { branch: name, why: `ahead of ${up}`, count: Number(ahead) };
+        if (!up || /gone/.test(track ?? "")) {
           const n = await count(name, "--not", "--remotes", "HEAD");
-          if (n) other.push({ branch: name, why: up ? `upstream ${up} is gone` : "no upstream", count: n });
+          if (n) return { branch: name, why: up ? `upstream ${up} is gone` : "no upstream", count: n };
         }
-      }
+        return null;
+      }));
+      const other = found.filter(Boolean);
       if (other.length) o.otherBranches = other.slice(0, 15);
     }
     return o;
