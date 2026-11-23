@@ -1,6 +1,6 @@
 id = "temet.repos"
 name = "repos"
-version = "0.1.0"
+version = "0.1.1"
 min_ask_kit = "0.3.0"
 requires = ["git"]
 says = "all the git repositories and worktrees on this machine at once: which have uncommitted, unpushed or stashed work, which branch each is on and how far ahead or behind, where a branch, a commit or a file lives, what was committed today or this week across projects, which worktrees exist and which are stale, which branches are merged and can go; and acting on them (fetch, pull, push, switch, stash, prune, delete merged branches)"
