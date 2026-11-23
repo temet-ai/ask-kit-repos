@@ -1,13 +1,13 @@
 export const meta = {
   purpose:
-    "Only the repositories and worktrees holding work that could be lost or forgotten, and exactly what: uncommitted paths, unpushed commits with their subjects, a branch with no upstream and the commits no remote has, stashes with message and age, a detached HEAD with commits no branch holds, an operation left in progress. Answers \"what have I not committed or pushed\" and \"is it safe to delete or leave this machine\".",
+    "Repositories and worktrees with unfinished work or no remote: uncommitted paths, unpushed commits, branches with no upstream, stashes, loose detached commits and operations in progress. Answers \"what have I not committed or pushed\" and \"which repositories have no remote\".",
   params: {
     only: "only repositories whose label or path contains this text (or a list of them), optional",
     roots: "look in these folders instead of the configured ones, comma-separated, optional",
     branches: "also check every other local branch for commits no remote has, default true",
   },
   returns:
-    "{verdict, count, unfinished:[{repo, worktreeOf?, branch, operation?, uncommitted?:{staged, unstaged, untracked, conflicted: {count, paths}}, unpushed?:{upstream, count, commits:[sha subject]}, noUpstream?:{count, commits, why}, detached?:{head, count, commits}, stashes?:[{ref, age, message}], otherBranches?:[{branch, why, count}]}], clean:[repo], fetched, roots}",
+    "{verdict, count, unfinished:[{repo, worktreeOf?, branch, noRemote?, operation?, uncommitted?:{staged, unstaged, untracked, conflicted: {count, paths}}, unpushed?:{upstream, count, commits:[sha subject]}, noUpstream?:{count, commits, why}, detached?:{head, count, commits}, stashes?:[{ref, age, message}], otherBranches?:[{branch, why, count}]}], clean:[repo], fetched, roots}",
   example: 'await scripts.run("unfinished", {})',
 };
 
@@ -45,6 +45,9 @@ export default async function ({ repos }, { only, roots, branches = true } = {})
       });
       if (s.stashes > o.stashes.length) o.stashesLeftOut = s.stashes - o.stashes.length;
     }
+    const remotes = await remoteP;
+    if (remotes.code !== 0) o.error = remotes.err.trim() || `git remote exited ${remotes.code}`;
+    else if (!lines(remotes.out).length) o.noRemote = true;
     // Other local branches are shared by a repository's worktrees: look once, from the main one.
     if (branches && !repo.worktree) {
       const refs = lines((await git("for-each-ref", "--format=%(refname:short)%09%(upstream:short)%09%(upstream:track)%09%(worktreepath)", "refs/heads")).out).map((l) => l.split("\t"));
@@ -67,7 +70,7 @@ export default async function ({ repos }, { only, roots, branches = true } = {})
   const isUnfinished = (o) => Object.keys(o).some((k) => !["repo", "worktreeOf", "branch"].includes(k));
   const unfinished = all.filter(isUnfinished);
   const n = (k) => unfinished.filter((o) => o[k]).length;
-  const parts = [[n("uncommitted"), "with uncommitted changes"], [n("unpushed") + n("noUpstream"), "with commits no remote has"], [n("stashes"), "with stashes"], [n("detached"), "detached with loose commits"], [n("operation"), "mid-operation"], [n("otherBranches"), "with other unpushed branches"]].filter(([c]) => c).map(([c, t]) => `${c} ${t}`);
+  const parts = [[n("uncommitted"), "with uncommitted changes"], [n("unpushed") + n("noUpstream"), "with commits no remote has"], [n("noRemote"), "with no remote"], [n("stashes"), "with stashes"], [n("detached"), "detached with loose commits"], [n("operation"), "mid-operation"], [n("otherBranches"), "with other unpushed branches"], [n("error"), "with errors"]].filter(([c]) => c).map(([c, t]) => `${c} ${t}`);
   const tracked = sts.filter((s) => s.upstream && !s.error);
   const oldest = tracked.filter((s) => s.lastFetch).sort((a, b) => (a.lastFetch < b.lastFetch ? -1 : 1))[0];
   return {

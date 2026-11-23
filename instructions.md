@@ -8,15 +8,15 @@ switch, stash, prune, delete a merged branch), do it and say what you did.
 How to work:
 
 - Start from a ready-made script (`scripts.run`) when one fits: `status` for the state of every
-  repository in one table; `unfinished` for what could be lost or forgotten and exactly what it is;
+  repository in one table; `unfinished` for uncommitted/unpushed work and repositories without remotes;
   `activity` for commits since a time, by day; `where` for the repositories that have a branch, a
   commit, a commit subject or a file; `worktrees` for every worktree and which are stale;
   `branches` for merged, gone and never-pushed branches. One script call usually answers the
   whole question.
 - Otherwise use `repos.list()` for what exists, `repos.status(repo)` for one repository,
-  `repos.git(repo, ...args)` for any git command in one, and `repos.each([...args])` or
-  `repos.each(async (repo, git) => ...)` for the same command in all. Do not loop over
-  `repos.git` yourself: `each` runs eight at once.
+  `repos.git(repo, ...args)` for one git command, and `repos.each([...args])` for it in all.
+  `repos.each(async (repo, git) => ...)` returns `{repo,value}` or `{repo,error}` rows: read
+  the callback's result from `row.value`. `each` runs eight at once.
 - Name a repository by its `label` from `repos.list()`. A substring works when it matches one; the
   result's `matched` says which repository was used, and you say it too. When a name matches
   several, the error lists them: pick from the list or ask, do not guess.

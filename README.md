@@ -75,6 +75,9 @@ of four small repositories that `node bench/fixture/build.mjs` builds. `ask-kit 
 on 2026-11-20: 10/10, all answered with no model. No model run has been made yet: the bench has
 no model questions, because those come only from real sessions.
 
+`node test/unfinished.mjs` checks dirty paths, unpushed local branches and repositories without
+remotes using temporary git repositories. It runs offline without a model.
+
 ## What is in it
 
 `repos.mjs` finds the repositories and gives the investigator `git` in one of them or in all,
